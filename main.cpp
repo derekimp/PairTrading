@@ -5,6 +5,11 @@
 #include "json/json.h"
 #include "curl/curl.h"
 #include <sqlite3.h>
+#include "Stock.h"  // added for 1 and 2
+#include "MarketData.h" // added for 1 and 2
+#include "Database.h" // added for 1 and 2
+#include <map>
+
 
 using namespace std;
 
@@ -30,6 +35,10 @@ int main(void)
 	bool bCompleted = false;
 	char* zErrMsg1 = 0;
 	int rc1 = 0;
+ 
+	map<string, string> readBuffer1; //buffer needed for 2
+	map<string, string> readBuffer2; //buffer needed for 2
+
 	while (!bCompleted)
 	{
 		string str;
@@ -72,11 +81,57 @@ int main(void)
 		{
 		case 1:
 		{
-
+			sqlite3* db;
+			OpenDatabase(db); //Open database
+			CreatePairTable(db); // Create table StockPairs, PairOnePrices and PairTwoPrices
+			PopulatePairTable(db); // Read PairTrading.txt and save it to StockPairs
+			break;
 		}
 		case 2:
 		{
+			// get symbols from StockPairs
+			vector<string> symbol1, symbol2;
 
+			string sql_select = string("SELECT StockPairs.symbol1 as symbol1,StockPairs.symbol2 as symbol2 From StockPairs");
+			int rc = 0;
+			char* error = nullptr;
+
+			cout << "Retrieving values in table StockPairs ..." << endl;
+			char** results = NULL;
+			int rows, columns;
+			sqlite3_get_table(db, sql_select.c_str(), &results, &rows, &columns, &error);
+			if (rc)
+			{
+				cerr << "Error executing SQLite3 query: " << sqlite3_errmsg(db) << endl << endl;
+				sqlite3_free(error);
+			}
+			else
+			{
+				// save symbols to vectors symbol1 and symbol2
+				for (int rowCtr = 1; rowCtr <= rows; ++rowCtr)
+				{
+					for (int colCtr = 0; colCtr < columns; ++colCtr)
+					{
+						int cellPosition = (rowCtr * columns) + colCtr;
+						if (colCtr == 0) symbol1.push_back(results[cellPosition]);
+						else symbol2.push_back(results[cellPosition]);
+					}
+				}
+			}
+			sqlite3_free_table(results);
+
+			// Table name
+			string Table1 = string("PairOnePrices"); 
+			string Table2 = string("PairTwoPrices");
+			
+			// Retrieve data using libcurl
+			RetrieveData(symbol1, symbol2, readBuffer1, readBuffer2);
+
+			// store data into PairOnePrices and PairTwoPrices
+			PopulateTable(db, symbol1, readBuffer1,Table1);
+			PopulateTable(db, symbol2, readBuffer2,Table2);
+
+			break;
 		}
 		case 3:
 		{
