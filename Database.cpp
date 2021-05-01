@@ -151,3 +151,84 @@ int InsertTable(sqlite3* db, const Stock& stock, string TableName)
 	return 0;
 };
 
+int CreatePairPricesTable(sqlite3*& db)
+{
+	int rc = 0;
+	char* error = nullptr;
+
+	// Create PairPrices table
+	cout << "Creating PairPrices table ..." << endl;
+	string sqlCreateTable = string("CREATE TABLE IF NOT EXISTS PairPrices ")
+		+ "(symbol1 CHAR(20) NOT NULL,"
+		+ "symbol2 CHAR(20) NOT NULL,"
+		+ "date CHAR(20) NOT NULL,"
+		+ "open1 REAL NOT NULL,"
+		+ "close1 REAL NOT NULL,"
+		+ "open2 REAL NOT NULL,"
+		+ "close2 REAL NOT NULL,"
+		+ "profit_loss FLOAT NOT NULL,"
+		+ "PRIMARY KEY(symbol1, symbol2, date)"
+		+ ");";
+
+	rc = sqlite3_exec(db, sqlCreateTable.c_str(), NULL, NULL, &error);
+	if (rc)
+	{
+		cerr << "Error executing SQLite3 statement: " << sqlite3_errmsg(db) << endl << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		cout << "Created PairPrices table." << endl << endl;
+	}
+
+	//fullfill the table
+	cout << "Extracting data from other tables ..." << endl;
+	string sqlExtract = string("Insert into PairPrices ")
+		+ "Select StockPairs.symbol1 as symbol1, StockPairs.symbol2 as symbol2, "
+		+ "PairOnePrices.date as date, PairOnePrices.open as open1, PairOnePrices.close as close1, "
+		+ "PairTwoPrices.open as open2, PairTwoPrices.close as close2, 0 as profit_loss "
+		+ "From StockPairs, PairOnePrices, PairTwoPrices "
+		+ "Where (((StockPairs.symbol1 = PairOnePrices.symbol) and (StockPairs.symbol2 = PairTwoPrices.symbol)) and "
+		+ "(PairOnePrices.date = PairTwoPrices.date)) ORDER BY symbol1, symbol2;";
+
+	rc = sqlite3_exec(db, sqlExtract.c_str(), NULL, NULL, &error);
+	if (rc)
+	{
+		cerr << "Error executing SQLite3 statement: " << sqlite3_errmsg(db) << endl << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		cout << "PairPrices table done." << endl << endl;
+	}
+
+	return 0;
+};
+
+int CalVol(sqlite3*& db)
+{
+	int rc = 0;
+	char* error = nullptr;
+	string back_test_start_date = "2021-01-01";
+	
+	// Calculate Vol
+	cout << "Calculating volatility ..." << endl;
+	string calculate_volatility_for_pair = string("Update StockPairs SET volatility =")
+		+ "(SELECT(AVG((Close1/Close2)*(Close1/Close2)) - AVG(Close1/Close2)*AVG(Close1/Close2)) as variance "
+		+ "FROM PairPrices "
+		+ "WHERE StockPairs.symbol1 = PairPrices.symbol1 AND StockPairs.symbol2 = PairPrices.symbol2 AND PairPrices.date <= \'"
+		+ back_test_start_date + "\');";
+
+	rc = sqlite3_exec(db, calculate_volatility_for_pair.c_str(), NULL, NULL, &error);
+	if (rc)
+	{
+		cerr << "Error executing SQLite3 statement: " << sqlite3_errmsg(db) << endl << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		cout << "Volatility done." << endl << endl;
+	}
+
+	return 0;
+};
