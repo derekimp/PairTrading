@@ -135,11 +135,15 @@ int main(void)
 		}
 		case 3:
 		{
+			CreatePairPricesTable(db);
 
+			break;
 		}
 		case 4:
 		{
+			CalVol(db);
 
+			break;
 		}
 		case 5:
 		{
