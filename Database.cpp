@@ -232,3 +232,93 @@ int CalVol(sqlite3*& db)
 
 	return 0;
 };
+
+
+int CalDailyPnL(sqlite3*& db, double k)
+{
+	int rc = 0;
+	char* error = nullptr;
+	string back_test_start_date = "2021-01-01";
+	string k_string = to_string(k);
+
+	// Calculate Vol
+	cout << "Calculating Daily PnL ..." << endl;
+	string create_temp = string("CREATE TABLE IF NOT EXISTS temp_ as ")
+		+ "SELECT PairPrices.symbol1, PairPrices.symbol2, PairPrices.date, CASE WHEN (ABS(lag(PairPrices.close1,1)over(ORDER BY PairPrices.ROWID)/lag(PairPrices.close2,1)over(ORDER BY PairPrices.ROWID) - PairPrices.open1/PairPrices.open2) > 1.0 * StockPairs.volatility) "
+		+ "THEN (10000*(PairPrices.open1-PairPrices.close1) + 10000*PairPrices.open1/PairPrices.open2*(PairPrices.close2 - PairPrices.open2)) "
+		+ "ELSE (10000*(PairPrices.close1-PairPrices.open1) + 10000*PairPrices.open1/PairPrices.open2*(PairPrices.open2 - PairPrices.close2)) END AS pnl "
+		+ "FROM PairPrices "
+		+ "INNER JOIN StockPairs on StockPairs.symbol1 = PairPrices.symbol1 ";
+	rc = sqlite3_exec(db, create_temp.c_str(), NULL, NULL, &error);
+	if (rc)
+	{
+		cerr << "Error executing SQLite3 statement: " << sqlite3_errmsg(db) << endl << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		cout << "Temporary table created." << endl << endl;
+	}
+
+
+	string cal_Daily_PnL = string("UPDATE PairPrices SET profit_loss = (")
+		+ "SELECT pnl FROM temp_ WHERE temp_.ROWID = PairPrices.ROWID)";
+	error = nullptr;
+	rc = sqlite3_exec(db, cal_Daily_PnL.c_str(), NULL, NULL, &error);
+	if (rc)
+	{
+		cerr << "Error executing SQLite3 statement: " << sqlite3_errmsg(db) << endl << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		cout << "Daily PnL done." << endl << endl;
+	}
+
+
+	string drop_temp = string("DROP TABLE temp_");
+	error = nullptr;
+	rc = sqlite3_exec(db, cal_Daily_PnL.c_str(), NULL, NULL, &error);
+
+	if (rc)
+	{
+		cerr << "Error executing SQLite3 statement: " << sqlite3_errmsg(db) << endl << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		cout << "Drop temporary table." << endl << endl;
+	}
+
+	return 0;
+};
+
+int CalSumPnL(sqlite3*& db)
+{
+	int rc = 0;
+	char* error = nullptr;
+	string back_test_start_date = "2021-01-01";
+
+	// Calculate Vol
+	cout << "Calculating Sum PnL ..." << endl;
+	string calculate_volatility_for_pair = string("UPDATE StockPairs set profit_loss = ")
+		+ "(Select sum(PairPrices.profit_loss) FROM PairPrices "
+		+ "FROM PairPrices "
+		+ "WHERE PairPrices.date >= \'"
+		+ back_test_start_date + "\' "
+		+ "and Pairprices.symbol1 = StockPairs.symbol1 "
+		+ "GROUP by PairPrices.symbol1)";
+
+	rc = sqlite3_exec(db, calculate_volatility_for_pair.c_str(), NULL, NULL, &error);
+	if (rc)
+	{
+		cerr << "Error executing SQLite3 statement: " << sqlite3_errmsg(db) << endl << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		cout << "Sum PnL done." << endl << endl;
+	}
+
+	return 0;
+};

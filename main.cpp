@@ -5,9 +5,9 @@
 #include "json/json.h"
 #include "curl/curl.h"
 #include <sqlite3.h>
-#include "Stock.h"  // added for 1 and 2
-#include "MarketData.h" // added for 1 and 2
-#include "Database.h" // added for 1 and 2
+#include "Stock.h"  // added for 1, 2, 3, 4
+#include "MarketData.h" // added for 1, 2, 3, 4
+#include "Database.h" // added for 1, 2, 3, 4, 5, 6
 #include <map>
 
 
@@ -15,7 +15,7 @@ using namespace std;
 
 int OpenDatabase(sqlite3*& db) {
 	int rc;
-	rc = sqlite3_open("C:\\Users\\User\\Desktop\\lwp\\Spring 2021\\7831\\Lab1_lp2496\\MarketData.db", &db);
+	rc = sqlite3_open("C:\\Users\\User\\Desktop\\lwp\\Spring 2021\\7831\\Final_Project\\Data.db", &db);
 	if (rc) {
 		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
 		return 1;
@@ -42,6 +42,7 @@ int main(void)
 	while (!bCompleted)
 	{
 		string str;
+		double k = 1.0;
 		cout << endl;
 		cout << "Pick a choice from the list:" << endl << endl
 
@@ -81,8 +82,8 @@ int main(void)
 		{
 		case 1:
 		{
-			sqlite3* db;
-			OpenDatabase(db); //Open database
+			//sqlite3* db;
+			//OpenDatabase(db); //Open database
 			CreatePairTable(db); // Create table StockPairs, PairOnePrices and PairTwoPrices
 			PopulatePairTable(db); // Read PairTrading.txt and save it to StockPairs
 			break;
@@ -147,11 +148,16 @@ int main(void)
 		}
 		case 5:
 		{
+			cout << "Please Enter K (default 1.0):" << endl;
+			cin >> k;
+			CalDailyPnL(db, k);
+			break;
 
 		}
 		case 6:
 		{
-
+			CalSumPnL(db);
+			break;
 		}
 		case 7:
 		{
