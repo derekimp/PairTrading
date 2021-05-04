@@ -5,9 +5,9 @@
 #include "json/json.h"
 #include "curl/curl.h"
 #include <sqlite3.h>
-#include "Stock.h"  // added for 1 and 2
-#include "MarketData.h" // added for 1 and 2
-#include "Database.h" // added for 1 and 2
+#include "Stock.h"  // added for 1, 2, 3, 4
+#include "MarketData.h" // added for 1, 2, 3, 4
+#include "Database.h" // added for 1, 2, 3, 4, 5, 6, 7, 8
 #include <map>
 
 
@@ -35,13 +35,14 @@ int main(void)
 	bool bCompleted = false;
 	char* zErrMsg1 = 0;
 	int rc1 = 0;
- 
+
 	map<string, string> readBuffer1; //buffer needed for 2
 	map<string, string> readBuffer2; //buffer needed for 2
 
 	while (!bCompleted)
 	{
 		string str;
+		double k = 1.0;
 		cout << endl;
 		cout << "Pick a choice from the list:" << endl << endl
 
@@ -121,15 +122,15 @@ int main(void)
 			sqlite3_free_table(results);
 
 			// Table name
-			string Table1 = string("PairOnePrices"); 
+			string Table1 = string("PairOnePrices");
 			string Table2 = string("PairTwoPrices");
-			
+
 			// Retrieve data using libcurl
 			RetrieveData(symbol1, symbol2, readBuffer1, readBuffer2);
 
 			// store data into PairOnePrices and PairTwoPrices
-			PopulateTable(db, symbol1, readBuffer1,Table1);
-			PopulateTable(db, symbol2, readBuffer2,Table2);
+			PopulateTable(db, symbol1, readBuffer1, Table1);
+			PopulateTable(db, symbol2, readBuffer2, Table2);
 
 			break;
 		}
@@ -147,19 +148,26 @@ int main(void)
 		}
 		case 5:
 		{
+			cout << "Please Enter K (default 1.0):" << endl;
+			cin >> k;
+			CalDailyPnL(db, k);
+			break;
 
 		}
 		case 6:
 		{
-
+			CalSumPnL(db);
+			break;
 		}
 		case 7:
 		{
-
+			ManualTest(db);
+			break;
 		}
 		case 8:
 		{
-
+			DropAllTable(db);
+			break;
 		}
 		case 0:
 			sqlite3_close(db);
@@ -171,4 +179,3 @@ int main(void)
 		}
 	}
 }
-
