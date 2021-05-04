@@ -7,7 +7,7 @@
 #include <sqlite3.h>
 #include "Stock.h"  // added for 1, 2, 3, 4
 #include "MarketData.h" // added for 1, 2, 3, 4
-#include "Database.h" // added for 1, 2, 3, 4, 5, 6, 7, 8
+#include "Database.h" // added for 1, 2, 3, 4, 5, 6, 7
 #include <map>
 
 
@@ -15,7 +15,7 @@ using namespace std;
 
 int OpenDatabase(sqlite3*& db) {
 	int rc;
-	rc = sqlite3_open("C:\\Users\\User\\Desktop\\lwp\\Spring 2021\\7831\\Lab1_lp2496\\MarketData.db", &db);
+	rc = sqlite3_open("Data.db", &db);
 	if (rc) {
 		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
 		return 1;
