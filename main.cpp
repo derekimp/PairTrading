@@ -13,9 +13,9 @@
 
 using namespace std;
 
-int OpenDatabase(sqlite3*& db) {
+int OpenDatabase(sqlite3*& db, string name) {
 	int rc;
-	rc = sqlite3_open("Data.db", &db);
+	rc = sqlite3_open(name.c_str(), &db);
 	if (rc) {
 		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
 		return 1;
@@ -30,8 +30,10 @@ int OpenDatabase(sqlite3*& db) {
 int main(void)
 {
 	sqlite3* db = NULL;
+	sqlite3* db1 = NULL;
 	//OpenDatabase needs to be defined
-	if (OpenDatabase(db) != 0)	  return -1;
+	if (OpenDatabase(db, "Data.db") != 0)	  return -1;
+	if (OpenDatabase(db1, "Data_2021.db") != 0)	  return -1;
 	bool bCompleted = false;
 	char* zErrMsg1 = 0;
 	int rc1 = 0;
@@ -82,10 +84,12 @@ int main(void)
 		{
 		case 1:
 		{
-			sqlite3* db;
-			OpenDatabase(db); //Open database
 			CreatePairTable(db); // Create table StockPairs, PairOnePrices and PairTwoPrices
 			PopulatePairTable(db); // Read PairTrading.txt and save it to StockPairs
+
+			CreatePairTable(db1); // Create table StockPairs, PairOnePrices and PairTwoPrices
+			PopulatePairTable(db1); // Read PairTrading.txt and save it to StockPairs
+
 			break;
 		}
 		case 2:
@@ -125,12 +129,31 @@ int main(void)
 			string Table1 = string("PairOnePrices");
 			string Table2 = string("PairTwoPrices");
 
+			string option;
+			cout << "Retrieve data before 2021? y for yes" << endl;
+			cin >> option;
+			if (option == "y")
+			{
+				// Retrieve data using libcurl
+				RetrieveData("2011-01-01", "2020-12-31", symbol1, symbol2, readBuffer1, readBuffer2);
+				// store data into PairOnePrices and PairTwoPrices
+				PopulateTable(db, symbol1, readBuffer1, Table1);
+				PopulateTable(db, symbol2, readBuffer2, Table2);
+				readBuffer1.clear();
+				readBuffer2.clear();
+			}
+
+			cout << "Retrieve data in 2021? y for yes" << endl;
+			cin >> option;
+			if (option == "y")
+			{
 			// Retrieve data using libcurl
-			RetrieveData(symbol1, symbol2, readBuffer1, readBuffer2);
+			RetrieveData("2021-01-01", "2021-06-01", symbol1, symbol2, readBuffer1, readBuffer2);
 
 			// store data into PairOnePrices and PairTwoPrices
-			PopulateTable(db, symbol1, readBuffer1, Table1);
-			PopulateTable(db, symbol2, readBuffer2, Table2);
+			PopulateTable(db1, symbol1, readBuffer1, Table1);
+			PopulateTable(db1, symbol2, readBuffer2, Table2);
+			}
 
 			break;
 		}

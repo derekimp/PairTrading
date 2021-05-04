@@ -59,13 +59,11 @@ int PullMarketData(const std::string& url_request, std::string& read_buffer)
 
 };
 
-int RetrieveData(std::vector<std::string> symbol1, std::vector<std::string> symbol2, std::map<std::string, std::string>& read_buffer1, std::map<std::string, std::string>& read_buffer2)
+int RetrieveData(std::string start_date, std::string end_date, std::vector<std::string> symbol1, std::vector<std::string> symbol2, std::map<std::string, std::string>& read_buffer1, std::map<std::string, std::string>& read_buffer2)
 {
 	// Retrieve and populate data
 	std::string url_common1 = "https://eodhistoricaldata.com/api/eod/";
 	std::string symbol, url_request;
-	std::string start_date = "2011-01-01";
-	std::string end_date = "2021-04-29";
 	std::string api_token = "601390a0a753f2.12891709";
 
 	for (std::vector<std::string>::iterator iter = symbol1.begin(); iter != symbol1.end(); iter++)
