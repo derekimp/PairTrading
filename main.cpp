@@ -32,8 +32,7 @@ int main(void)
 	sqlite3* db = NULL;
 	sqlite3* db1 = NULL;
 	//OpenDatabase needs to be defined
-	if (OpenDatabase(db, "Data.db") != 0)	  return -1;
-	if (OpenDatabase(db1, "Data_2021.db") != 0)	  return -1;
+	if (OpenDatabase(db, "PairTrading_demo.db") != 0)	  return -1;
 	bool bCompleted = false;
 	char* zErrMsg1 = 0;
 	int rc1 = 0;
@@ -50,7 +49,7 @@ int main(void)
 
 			//Read and store the pairs of stocks' name from PairTrading.txt into a map
 			//Create two tables - PairOnePrices and PairTwoPrices in PairTrading.db
-			<< "1.Create and Populate Pair Table" << endl
+			<< "1.Create and Populate All Tables" << endl
 
 			//Retrieve data using libcurl and store them into PairOnePrices and PairTwoPrices
 			<< "2.Retrieve and Populate Historical Data for Each Stock" << endl
@@ -58,10 +57,10 @@ int main(void)
 			//Create a table PairPrices
 			//From PairOnePrices and PairTwoPrices extract the open and close price for each
 			//pair of stock each date and store them into PairPrices
-			<< "3.Create PairPrices Table" << endl
+			<< "3.Insert Stock Pairs into Table" << endl
 
 			//Create StockPairs Table, extract the pair from PairPrices and calculate their volatility
-			<< "4.Create StockPairs Table and Calculate Volatility" << endl
+			<< "4.Calculate Volatility" << endl
 
 			//According to PairPrices, implement the algorighm and calculate the P/L after each transaction
 			<< "5.Back Test" << endl
@@ -86,9 +85,6 @@ int main(void)
 		{
 			CreatePairTable(db); // Create table StockPairs, PairOnePrices and PairTwoPrices
 			PopulatePairTable(db); // Read PairTrading.txt and save it to StockPairs
-
-			CreatePairTable(db1); // Create table StockPairs, PairOnePrices and PairTwoPrices
-			PopulatePairTable(db1); // Read PairTrading.txt and save it to StockPairs
 
 			break;
 		}
@@ -151,8 +147,8 @@ int main(void)
 			RetrieveData("2021-01-01", "2021-06-01", symbol1, symbol2, readBuffer1, readBuffer2);
 
 			// store data into PairOnePrices and PairTwoPrices
-			PopulateTable(db1, symbol1, readBuffer1, Table1);
-			PopulateTable(db1, symbol2, readBuffer2, Table2);
+			PopulateTable(db, symbol1, readBuffer1, Table1);
+			PopulateTable(db, symbol2, readBuffer2, Table2);
 			}
 
 			break;

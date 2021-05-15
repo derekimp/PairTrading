@@ -22,7 +22,7 @@ int CreatePairTable(sqlite3*& db)
 		+ "symbol2 CHAR(20) NOT NULL,"
 		+ "volatility FLOAT NOT NULL,"
 		+ "profit_loss FLOAT NOT NULL,"
-		+ "PRIMARY KEY(symbol1, symbol2)"
+		+ "PRIMARY KEY(\"symbol1\", \"symbol2\")"
 		+ ");";
 
 	rc = sqlite3_exec(db, sqlCreateTable.c_str(), NULL, NULL, &error);
@@ -36,6 +36,33 @@ int CreatePairTable(sqlite3*& db)
 		cout << "Created StockPairs table." << endl << endl;
 	}
 
+	// Create PairPrices table
+	cout << "Creating PairPrices table ..." << endl;
+	sqlCreateTable = string("CREATE TABLE IF NOT EXISTS PairPrices ")
+		+ "(symbol1 CHAR(20) NOT NULL,"
+		+ "symbol2 CHAR(20) NOT NULL,"
+		+ "date CHAR(20) NOT NULL,"
+		+ "open1 REAL NOT NULL,"
+		+ "close1 REAL NOT NULL,"
+		+ "open2 REAL NOT NULL,"
+		+ "close2 REAL NOT NULL,"
+		+ "profit_loss FLOAT NOT NULL,"
+		+ "PRIMARY KEY(symbol1, symbol2, date) "
+		+ "FOREIGN KEY(\"symbol2\") REFERENCES \"StockPairs\"(\"symbol2\") ON DELETE CASCADE ON UPDATE CASCADE, "
+		+ "FOREIGN KEY(\"symbol1\") REFERENCES \"StockPairs\"(\"symbol1\") ON DELETE CASCADE ON UPDATE CASCADE "
+		+ ");";
+
+	rc = sqlite3_exec(db, sqlCreateTable.c_str(), NULL, NULL, &error);
+	if (rc)
+	{
+		cerr << "Error executing SQLite3 statement: " << sqlite3_errmsg(db) << endl << endl;
+		sqlite3_free(error);
+	}
+	else
+	{
+		cout << "Created PairPrices table." << endl << endl;
+	}
+
 	cout << "Creating PairOnePrices table ..." << endl;
 	sqlCreateTable = string("CREATE TABLE IF NOT EXISTS PairOnePrices ")
 		+ "(symbol CHAR(20) NOT NULL,"
@@ -46,7 +73,9 @@ int CreatePairTable(sqlite3*& db)
 		+ "close REAL NOT NULL,"
 		+ "adjusted_close REAL NOT NULL,"
 		+ "volume INT NOT NULL,"
-		+ "PRIMARY KEY(symbol, date)"
+		+ "PRIMARY KEY(symbol, date) "
+		+ "FOREIGN KEY(\"symbol\") REFERENCES \"PairPrices\"(\"symbol1\") ON DELETE CASCADE ON UPDATE CASCADE,"
+		+ "FOREIGN KEY(\"date\") REFERENCES \"PairPrices\"(\"date\") ON DELETE CASCADE ON UPDATE CASCADE "
 		+ ");";
 
 
@@ -71,7 +100,9 @@ int CreatePairTable(sqlite3*& db)
 		+ "close REAL NOT NULL,"
 		+ "adjusted_close REAL NOT NULL,"
 		+ "volume INT NOT NULL,"
-		+ "PRIMARY KEY(symbol, date)"
+		+ "PRIMARY KEY(symbol, date) "
+		+ "FOREIGN KEY(\"symbol\") REFERENCES \"PairPrices\"(\"symbol2\") ON DELETE CASCADE ON UPDATE CASCADE,"
+		+ "FOREIGN KEY(\"date\") REFERENCES \"PairPrices\"(\"date\") ON DELETE CASCADE ON UPDATE CASCADE "
 		+ ");";
 
 
@@ -107,8 +138,8 @@ int PopulatePairTable(sqlite3*& db)
 		istringstream readstr(line);
 		getline(readstr, symbol1, ',');
 		getline(readstr, symbol2);
-		sprintf_s(sqlInsert, "INSERT INTO StockPairs (id, symbol1, symbol2, volatility, profit_loss) VALUES (%d, \"%s\", \"%s\", %f, %f)", id, symbol1.c_str(), symbol2.c_str(), 0.0, 0.0);
-
+		sprintf_s(sqlInsert, "INSERT or ignore INTO StockPairs (id, symbol1, symbol2, volatility, profit_loss) VALUES (%d, \"%s\", \"%s\", %f, %f)", id, symbol1.c_str(), symbol2.c_str(), 0.0, 0.0);
+		cout << sqlInsert << endl;
 		rc = sqlite3_exec(db, sqlInsert, NULL, NULL, &error);
 		if (rc)
 		{
@@ -158,34 +189,9 @@ int CreatePairPricesTable(sqlite3*& db)
 	int rc = 0;
 	char* error = nullptr;
 
-	// Create PairPrices table
-	cout << "Creating PairPrices table ..." << endl;
-	string sqlCreateTable = string("CREATE TABLE IF NOT EXISTS PairPrices ")
-		+ "(symbol1 CHAR(20) NOT NULL,"
-		+ "symbol2 CHAR(20) NOT NULL,"
-		+ "date CHAR(20) NOT NULL,"
-		+ "open1 REAL NOT NULL,"
-		+ "close1 REAL NOT NULL,"
-		+ "open2 REAL NOT NULL,"
-		+ "close2 REAL NOT NULL,"
-		+ "profit_loss FLOAT NOT NULL,"
-		+ "PRIMARY KEY(symbol1, symbol2, date)"
-		+ ");";
-
-	rc = sqlite3_exec(db, sqlCreateTable.c_str(), NULL, NULL, &error);
-	if (rc)
-	{
-		cerr << "Error executing SQLite3 statement: " << sqlite3_errmsg(db) << endl << endl;
-		sqlite3_free(error);
-	}
-	else
-	{
-		cout << "Created PairPrices table." << endl << endl;
-	}
-
 	//fullfill the table
 	cout << "Extracting data from other tables ..." << endl;
-	string sqlExtract = string("Insert into PairPrices ")
+	string sqlExtract = string("Insert or ignore into PairPrices ")
 		+ "Select StockPairs.symbol1 as symbol1, StockPairs.symbol2 as symbol2, "
 		+ "PairOnePrices.date as date, PairOnePrices.open as open1, PairOnePrices.close as close1, "
 		+ "PairTwoPrices.open as open2, PairTwoPrices.close as close2, 0 as profit_loss "
@@ -213,10 +219,12 @@ int CalVol(sqlite3*& db)
 	char* error = nullptr;
 	string back_test_start_date = "2021-01-01";
 
+	int res = sqlite3_create_function(db, "POWER", 2, SQLITE_UTF8, NULL, &sqlite_power, NULL, NULL);
+
 	// Calculate Vol
 	cout << "Calculating volatility ..." << endl;
 	string calculate_volatility_for_pair = string("Update StockPairs SET volatility =")
-		+ "(SELECT(AVG((Close1/Close2)*(Close1/Close2)) - AVG(Close1/Close2)*AVG(Close1/Close2)) as variance "
+		+ "(SELECT POWER((AVG((Close1/Close2)*(Close1/Close2)) - AVG(Close1/Close2)*AVG(Close1/Close2)),0.5) as variance "
 		+ "FROM PairPrices "
 		+ "WHERE StockPairs.symbol1 = PairPrices.symbol1 AND StockPairs.symbol2 = PairPrices.symbol2 AND PairPrices.date <= \'"
 		+ back_test_start_date + "\');";
@@ -229,11 +237,21 @@ int CalVol(sqlite3*& db)
 	}
 	else
 	{
-		cout << "Volatility done." << endl << endl;
+		cout << "volatility done." << endl << endl;
 	}
+
+	
+
 
 	return 0;
 };
+
+void sqlite_power(sqlite3_context* context, int argc, sqlite3_value** argv) {
+	double num = sqlite3_value_double(argv[0]); // get the first arg to the function
+	double exp = sqlite3_value_double(argv[1]); // get the second arg
+	double res = pow(num, exp);                 // calculate the result
+	sqlite3_result_double(context, res);        // save the result
+}
 
 int CalDailyPnL(sqlite3*& db, double k)
 {
@@ -245,11 +263,12 @@ int CalDailyPnL(sqlite3*& db, double k)
 	// Calculate Vol
 	cout << "Calculating Daily PnL ..." << endl;
 	string create_temp = string("CREATE TABLE IF NOT EXISTS temp_ as ")
-		+ "SELECT PairPrices.symbol1, PairPrices.symbol2, PairPrices.date, CASE WHEN (ABS(lag(PairPrices.close1,1)over(ORDER BY PairPrices.ROWID)/lag(PairPrices.close2,1)over(ORDER BY PairPrices.ROWID) - PairPrices.open1/PairPrices.open2) > 1.0 * StockPairs.volatility) "
+		+ "SELECT PairPrices.symbol1, PairPrices.symbol2, PairPrices.date, CASE WHEN (ABS(lag(PairPrices.close1,1)over(ORDER BY PairPrices.ROWID)/lag(PairPrices.close2,1)over(ORDER BY PairPrices.ROWID) - PairPrices.open1/PairPrices.open2) > " + k_string + " * StockPairs.volatility) "
 		+ "THEN (10000*(PairPrices.open1-PairPrices.close1) + 10000*PairPrices.open1/PairPrices.open2*(PairPrices.close2 - PairPrices.open2)) "
 		+ "ELSE (10000*(PairPrices.close1-PairPrices.open1) + 10000*PairPrices.open1/PairPrices.open2*(PairPrices.open2 - PairPrices.close2)) END AS pnl "
 		+ "FROM PairPrices "
-		+ "INNER JOIN StockPairs on StockPairs.symbol1 = PairPrices.symbol1 ";
+		+ "INNER JOIN StockPairs on StockPairs.symbol1 = PairPrices.symbol1 "
+		+ "Order By PairPrices.symbol1;";
 	rc = sqlite3_exec(db, create_temp.c_str(), NULL, NULL, &error);
 	if (rc)
 	{
@@ -260,7 +279,6 @@ int CalDailyPnL(sqlite3*& db, double k)
 	{
 		cout << "Temporary table created." << endl << endl;
 	}
-
 
 	string cal_Daily_PnL = string("UPDATE PairPrices SET profit_loss = (")
 		+ "SELECT pnl FROM temp_ WHERE temp_.ROWID = PairPrices.ROWID)";
@@ -279,7 +297,7 @@ int CalDailyPnL(sqlite3*& db, double k)
 
 	string drop_temp = string("DROP TABLE temp_");
 	error = nullptr;
-	rc = sqlite3_exec(db, cal_Daily_PnL.c_str(), NULL, NULL, &error);
+	rc = sqlite3_exec(db, drop_temp.c_str(), NULL, NULL, &error);
 
 	if (rc)
 	{
@@ -406,7 +424,7 @@ void ManualTest(sqlite3*& db)
 
 	//calculate N1, N2 and profitloss manually
 	int N1 = 0, N2 = 0;
-	if (abs(close1d1 / close2d1 - open1d2 / open2d2) > k * sqrt(variance))
+	if (abs(close1d1 / close2d1 - open1d2 / open2d2) > k * (variance))
 	{
 		N1 = -10000;
 		N2 = -int(N1 * (open1d2 / open2d2));

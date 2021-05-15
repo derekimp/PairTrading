@@ -64,7 +64,7 @@ int RetrieveData(std::string start_date, std::string end_date, std::vector<std::
 	// Retrieve and populate data
 	std::string url_common1 = "https://eodhistoricaldata.com/api/eod/";
 	std::string symbol, url_request;
-	std::string api_token = "601390a0a753f2.12891709";
+	std::string api_token = "60653f6dbb3876.15700499";
 
 	for (std::vector<std::string>::iterator iter = symbol1.begin(); iter != symbol1.end(); iter++)
 	{
